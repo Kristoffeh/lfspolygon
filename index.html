@@ -32,11 +32,14 @@
                 <button class="btn btn-primary" onclick="Export();">
                     <span class="btn-icon">📤</span> Export
                 </button>
-                <button class="btn btn-secondary" onclick="loadJson();">
-                    <span class="btn-icon">📥</span> Load
+                <button class="btn btn-secondary" onclick="openImportModal();">
+                    <span class="btn-icon">📥</span> Import
                 </button>
                 <button class="btn btn-danger" onclick="clearCanvas();">
                     <span class="btn-icon">🗑️</span> Clear Canvas
+                </button>
+                <button class="btn btn-danger" onclick="clearCanvas();">
+                    <span class="btn-icon">🧹</span> Wipe Layers
                 </button>
             </div>
         </div>
@@ -106,7 +109,7 @@
     <div class="modal-content">
         <div class="modal-header">
             <h2>Exported Data</h2>
-            <span class="modal-close">&times;</span>
+            <span class="modal-close" onclick="closeExportModal()">&times;</span>
         </div>
         <div class="modal-body">
             <textarea id="exportData" rows="15" cols="50"></textarea>
@@ -114,6 +117,24 @@
         <div class="modal-footer">
             <button onclick="copyExportData()">Copy to Clipboard</button>
             <button onclick="closeExportModal()">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- Import Modal -->
+<div id="importModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Import Data</h2>
+            <span class="modal-close" onclick="closeImportModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <textarea id="importData" rows="15" cols="50" placeholder="Paste JSON data here..."></textarea>
+            <div id="importError" style="color: #ff6b6b; margin-top: 10px; display: none;"></div>
+        </div>
+        <div class="modal-footer">
+            <button onclick="importJson()">Import</button>
+            <button onclick="closeImportModal()">Cancel</button>
         </div>
     </div>
 </div>

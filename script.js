@@ -55,6 +55,12 @@ $(function () {
         if (event.target === propertiesModal[0]) {
             closePropertiesModal();
         }
+        
+        // Import modal
+        var importModal = $('#importModal');
+        if (event.target === importModal[0]) {
+            closeImportModal();
+        }
     });
     
     // Enter key support for layer name input
@@ -746,18 +752,36 @@ function saveProperties() {
 }
 
 function clearCanvas() {
-    for (i in layers) {
-        if (layers.hasOwnProperty(i)) {
-            for (j in layers[i].circles) {
-                layers[i].circles[j].remove();
+    // Remove all shapes from all layers
+    for (var i in window.layers) {
+        if (window.layers.hasOwnProperty(i)) {
+            // Remove all circles
+            if (window.layers[i].circles) {
+                for (var j in window.layers[i].circles) {
+                    try {
+                        window.layers[i].circles[j].remove();
+                    } catch (e) {
+                        // Continue if removal fails
+                    }
+                }
             }
 
-            layers[i].polygon.remove();
+            // Remove polygon if it exists
+            if (window.layers[i].polygon) {
+                try {
+                    window.layers[i].polygon.remove();
+                } catch (e) {
+                    // Continue if removal fails
+                }
+            }
         }
     }
 
+    // Clear all layers
+    window.layers = {};
     layers = {};
 
+    // Clear the layer dropdown
     $('#layer').html('');
     layersSize = 0;
 }
@@ -803,32 +827,76 @@ function getEditType() {
     return document.getElementById('type').value;
 }
 
-function loadJson(){
+function openImportModal() {
+    $('#importData').val('');
+    $('#importError').hide();
+    $('#importModal').css('display', 'block');
+    $('#importData').focus();
+}
 
-    var conf = JSON.parse($('#txt').val())
+function closeImportModal() {
+    $('#importModal').css('display', 'none');
+    $('#importData').val('');
+    $('#importError').hide();
+}
 
-    if(typeof conf == 'undefined')
+function importJson() {
+    var jsonText = $('#importData').val().trim();
+    
+    if (jsonText.length === 0) {
+        $('#importError').text('Please paste JSON data').show();
         return;
+    }
 
-    clearCanvas();
-
-    var center = getCanvasCenter();
-
-    for(i in conf)
-    {
-        var street = conf[i];
-
-        document.getElementById("color-picker").value = getRandomColor();
-
-        addLayer(street.name);
-        layers[getLayer()].speedLimit = street.speedLimit;
-
-        for(j in street['X']) {
-            mouseX = center.x + street['X'][j];
-            mouseY = center.y - street['Y'][j];
-            createCirlce(true);
+    try {
+        var conf = JSON.parse(jsonText);
+        
+        if (typeof conf == 'undefined' || !Array.isArray(conf)) {
+            $('#importError').text('Invalid JSON format. Expected an array.').show();
+            return;
         }
-        reDrawPolygon();
+
+        clearCanvas();
+
+        var center = getCanvasCenter();
+
+        for(i in conf)
+        {
+            var street = conf[i];
+
+            if (!street.name || !street.X || !street.Y) {
+                $('#importError').text('Invalid data structure. Missing required fields (name, X, Y).').show();
+                clearCanvas();
+                return;
+            }
+
+            document.getElementById("color-picker").value = getRandomColor();
+
+            addLayer(street.name);
+            layers[getLayer()].speedLimit = street.speedLimit || 0;
+
+            for(j in street['X']) {
+                mouseX = center.x + street['X'][j];
+                mouseY = center.y - street['Y'][j];
+                createCirlce(true);
+            }
+            reDrawPolygon();
+        }
+        
+        closeImportModal();
+    } catch (e) {
+        $('#importError').text('Invalid JSON: ' + e.message).show();
+    }
+}
+
+// Keep loadJson for backwards compatibility (uses hidden textarea)
+function loadJson(){
+    var jsonText = $('#txt').val();
+    if (jsonText) {
+        $('#importData').val(jsonText);
+        openImportModal();
+    } else {
+        openImportModal();
     }
 }
 
