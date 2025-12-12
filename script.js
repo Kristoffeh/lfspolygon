@@ -102,18 +102,34 @@ $(function () {
         layers[layer].speedLimit = this.value;
     });
 })
+//Get canvas center point
+function getCanvasCenter() {
+    var width = canvasDiv.offsetWidth || parseInt(canvasDiv.style.width) || 2560;
+    var height = canvasDiv.offsetHeight || parseInt(canvasDiv.style.height) || 2560;
+    return { x: width / 2, y: height / 2 };
+}
+
 //Get mouse position
 function getMouseXY(e) {
+    var pageX, pageY;
 
     if (document.all) //For IE
     {
-        mouseX = event.clientX + document.body.parentElement.scrollLeft;
-        mouseY = event.clientY + document.body.parentElement.scrollTop;
+        pageX = event.clientX + document.body.parentElement.scrollLeft;
+        pageY = event.clientY + document.body.parentElement.scrollTop;
     }
     else {
-        mouseX = e.pageX
-        mouseY = e.pageY
+        pageX = e.pageX;
+        pageY = e.pageY;
     }
+
+    // Calculate position relative to canvas
+    var canvasRect = canvasDiv.getBoundingClientRect();
+    var scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
+    var scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+    
+    mouseX = pageX - canvasRect.left - scrollLeft + canvasDiv.scrollLeft;
+    mouseY = pageY - canvasRect.top - scrollTop + canvasDiv.scrollTop;
 
     if (mouseX < 0) {
         mouseX = 0
@@ -122,13 +138,11 @@ function getMouseXY(e) {
         mouseY = 0
     }
 
+    var center = getCanvasCenter();
     $('.mouse_helper').css({
-        left: (mouseX + 15) + 'px',
-        top: (mouseY + 15) + 'px'
-    }).text('X: ' + (mouseX - 1280) + ' Y: ' + (1280 - mouseY));
-
-    // mouseX = mouseX - canvasDiv.offsetLeft;
-    // mouseY = mouseY - canvasDiv.offsetTop;
+        left: (pageX + 15) + 'px',
+        top: (pageY + 15) + 'px'
+    }).text('X: ' + (mouseX - center.x) + ' Y: ' + (center.y - mouseY));
 
     return true;
 }
@@ -245,6 +259,15 @@ function track(track) {
         canvasDiv.style.width = this.width + 'px';
         canvasDiv.style.height = this.height + 'px';
         canvasDiv.style.backgroundImage = "url(tracks/" + track + ".jpg)";
+        
+        // Resize the SVG element to match the canvas
+        var svg = gr.getSVG();
+        if (svg) {
+            svg.style.width = this.width + 'px';
+            svg.style.height = this.height + 'px';
+            svg.setAttribute('width', this.width);
+            svg.setAttribute('height', this.height);
+        }
     };
     img.src = "tracks/" + track + ".jpg";
     return false;
@@ -303,6 +326,7 @@ function clearCanvas() {
 
 function Export() {
     var data = [];
+    var center = getCanvasCenter();
 
     for (i in layers) {
         if (layers.hasOwnProperty(i)) {
@@ -312,8 +336,8 @@ function Export() {
             row.X = [];
             row.Y = [];
             for (j in layers[i].circles) {
-                row.X.push(layers[i].circles[j].center.x - 1280);
-                row.Y.push(1280 - layers[i].circles[j].center.y);
+                row.X.push(layers[i].circles[j].center.x - center.x);
+                row.Y.push(center.y - layers[i].circles[j].center.y);
             }
             data.push(row);
         }
@@ -335,6 +359,8 @@ function loadJson(){
 
     clearCanvas();
 
+    var center = getCanvasCenter();
+
     for(i in conf)
     {
         var street = conf[i];
@@ -345,8 +371,8 @@ function loadJson(){
         layers[getLayer()].speedLimit = street.speedLimit;
 
         for(j in street['X']) {
-            mouseX = 1280 + street['X'][j];
-            mouseY = 1280 - street['Y'][j];
+            mouseX = center.x + street['X'][j];
+            mouseY = center.y - street['Y'][j];
             createCirlce(true);
         }
         reDrawPolygon();
