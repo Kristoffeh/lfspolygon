@@ -873,6 +873,20 @@ function createLayerWithName(name) {
     layers[layersSize].speedLimit = 0;
     layers[layersSize].name = name;
 
+    // Assign a random color to the new zone
+    var randomColor = getRandomColor();
+    var colorPicker = document.getElementById("color-picker");
+    var colorPickerWrapper = document.getElementById("color-picker-wrapper");
+    var colorDisplay = document.getElementById("color-display");
+    
+    colorPicker.value = randomColor;
+    if (colorPickerWrapper) {
+        colorPickerWrapper.style.backgroundColor = randomColor;
+    }
+    if (colorDisplay) {
+        colorDisplay.textContent = randomColor.toUpperCase();
+    }
+
     $('#layer').append(op);
     $('#layer').trigger('change');
     
