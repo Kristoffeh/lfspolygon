@@ -74,6 +74,11 @@ input {
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.5);
 }
 
+.modal-small {
+    max-width: 400px;
+    margin: 15% auto;
+}
+
 .modal-header {
     padding: 20px;
     background-color: #1a1a1a;

@@ -71,7 +71,9 @@
     <div class="control_block">
         <label>Layers:</label><br>
         <select size="10" id="layer"></select><br>
-        <button onclick="addLayer()">Add Layer</button>
+        <button onclick="addLayer()">Add Layer</button><br>
+        <button onclick="editLayer()">Edit Layer</button><br>
+        <button onclick="deleteLayer()">Delete Layer</button>
     </div>
 
 </div>
@@ -92,6 +94,41 @@
         <div class="modal-footer">
             <button onclick="copyExportData()">Copy to Clipboard</button>
             <button onclick="closeExportModal()">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- Layer Name Modal (for Add/Edit) -->
+<div id="layerNameModal" class="modal">
+    <div class="modal-content modal-small">
+        <div class="modal-header">
+            <h2 id="layerNameModalTitle">Layer Name</h2>
+            <span class="modal-close" onclick="closeLayerNameModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <input type="text" id="layerNameInput" placeholder="Enter layer name" style="width: 100%; padding: 10px; font-size: 14px; border: 1px solid #555; border-radius: 4px; background-color: #1a1a1a; color: #e0e0e0; box-sizing: border-box;">
+            <div id="layerNameError" style="color: #ff6b6b; margin-top: 10px; display: none;"></div>
+        </div>
+        <div class="modal-footer">
+            <button onclick="confirmLayerName()">OK</button>
+            <button onclick="closeLayerNameModal()">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div id="deleteConfirmModal" class="modal">
+    <div class="modal-content modal-small">
+        <div class="modal-header">
+            <h2>Delete Layer</h2>
+            <span class="modal-close" onclick="closeDeleteConfirmModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <p style="color: #e0e0e0; margin: 0;">Are you sure you want to delete this layer? This will remove all polygons and points in this layer.</p>
+        </div>
+        <div class="modal-footer">
+            <button onclick="confirmDeleteLayer()" style="background-color: #d32f2f;">Delete</button>
+            <button onclick="closeDeleteConfirmModal()">Cancel</button>
         </div>
     </div>
 </div>

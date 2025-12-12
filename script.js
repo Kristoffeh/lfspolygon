@@ -13,14 +13,30 @@ $(function () {
     gr.getSVG().style.opacity = 0.5;
 
     // Modal close handlers
-    $('.modal-close').on('click', function() {
-        closeExportModal();
-    });
-
     $(window).on('click', function(event) {
-        var modal = $('#exportModal');
-        if (event.target === modal[0]) {
+        // Export modal
+        var exportModal = $('#exportModal');
+        if (event.target === exportModal[0]) {
             closeExportModal();
+        }
+        
+        // Layer name modal
+        var layerNameModal = $('#layerNameModal');
+        if (event.target === layerNameModal[0]) {
+            closeLayerNameModal();
+        }
+        
+        // Delete confirm modal
+        var deleteModal = $('#deleteConfirmModal');
+        if (event.target === deleteModal[0]) {
+            closeDeleteConfirmModal();
+        }
+    });
+    
+    // Enter key support for layer name input
+    $('#layerNameInput').on('keypress', function(e) {
+        if (e.which === 13) { // Enter key
+            confirmLayerName();
         }
     });
 
@@ -287,32 +303,181 @@ function track(track) {
 
 
 
-function addLayer(inpName) {
-    var op = document.createElement('option');
-    if(typeof inpName == 'undefined')
-        var name = prompt('Input layer name');
-    else
-        name = inpName;
+var layerModalMode = 'add'; // 'add' or 'edit'
+var layerModalCallback = null;
 
+function addLayer(inpName) {
+    if(typeof inpName != 'undefined') {
+        // Direct call with name (from loadJson)
+        createLayerWithName(inpName);
+        return;
+    }
+    
+    // Show modal for user input
+    layerModalMode = 'add';
+    $('#layerNameModalTitle').text('Add Layer');
+    $('#layerNameInput').val('');
+    $('#layerNameError').hide();
+    $('#layerNameModal').css('display', 'block');
+    $('#layerNameInput').focus();
+}
+
+function createLayerWithName(name) {
     if (name.length <= 0) {
-        alert('name is empty');
         return undefined;
     }
 
     layersSize++;
 
+    var op = document.createElement('option');
     op.selected = true;
     op.value = layersSize;
     op.innerHTML = name;
 
     layers[layersSize] = {};
-
     layers[layersSize].circles = [];
     layers[layersSize].speedLimit = 0;
     layers[layersSize].name = name;
 
     $('#layer').append(op);
     $('#layer').trigger('change');
+    
+    return layersSize;
+}
+
+function editLayer() {
+    var layer = getLayer();
+    
+    if (typeof layer != 'string' || layer.length == 0) {
+        // Show error in a simple alert since modal isn't open yet
+        alert('Please select a layer to edit');
+        return;
+    }
+
+    layerModalMode = 'edit';
+    layerModalCallback = layer;
+    var currentName = layers[layer].name;
+    
+    $('#layerNameModalTitle').text('Edit Layer');
+    $('#layerNameInput').val(currentName);
+    $('#layerNameError').hide();
+    $('#layerNameModal').css('display', 'block');
+    $('#layerNameInput').focus();
+    $('#layerNameInput').select();
+}
+
+function deleteLayer() {
+    var layer = getLayer();
+    
+    if (typeof layer != 'string' || layer.length == 0) {
+        // Show error in a simple alert since modal isn't open yet
+        alert('Please select a layer to delete');
+        return;
+    }
+
+    layerModalCallback = layer;
+    $('#deleteConfirmModal').css('display', 'block');
+}
+
+function confirmDeleteLayer() {
+    var layer = layerModalCallback;
+    
+    if (!layer) {
+        closeDeleteConfirmModal();
+        return;
+    }
+
+    // Remove all circles and polygon from this layer
+    if (layers[layer]) {
+        for (var j in layers[layer].circles) {
+            layers[layer].circles[j].remove();
+        }
+        
+        if (typeof layers[layer].polygon != 'undefined') {
+            layers[layer].polygon.remove();
+        }
+    }
+
+    // Remove from layers object
+    delete layers[layer];
+
+    // Remove from select dropdown
+    var select = document.getElementById('layer');
+    for (var i = 0; i < select.options.length; i++) {
+        if (select.options[i].value == layer) {
+            select.remove(i);
+            break;
+        }
+    }
+
+    // Clear name and speed fields if layer was selected
+    if (select.value == layer || select.options.length == 0) {
+        $('#name').val('');
+        $('#speed').val('');
+    }
+    
+    // Select first layer if available
+    if (select.options.length > 0) {
+        select.selectedIndex = 0;
+        $('#layer').trigger('change');
+    }
+    
+    closeDeleteConfirmModal();
+}
+
+function confirmLayerName() {
+    var name = $('#layerNameInput').val().trim();
+    
+    if (name.length <= 0) {
+        showLayerError('Layer name cannot be empty');
+        return;
+    }
+    
+    if (layerModalMode === 'add') {
+        createLayerWithName(name);
+        closeLayerNameModal();
+    } else if (layerModalMode === 'edit') {
+        var layer = layerModalCallback;
+        if (!layer) {
+            closeLayerNameModal();
+            return;
+        }
+        
+        // Update layer name
+        layers[layer].name = name;
+        
+        // Update the option text in the select
+        var select = document.getElementById('layer');
+        for (var i = 0; i < select.options.length; i++) {
+            if (select.options[i].value == layer) {
+                select.options[i].innerHTML = name;
+                break;
+            }
+        }
+        
+        // Update the name input field if this layer is currently selected
+        if (select.value == layer) {
+            $('#name').val(name);
+        }
+        
+        closeLayerNameModal();
+    }
+}
+
+function closeLayerNameModal() {
+    $('#layerNameModal').css('display', 'none');
+    $('#layerNameInput').val('');
+    $('#layerNameError').hide();
+    layerModalCallback = null;
+}
+
+function closeDeleteConfirmModal() {
+    $('#deleteConfirmModal').css('display', 'none');
+    layerModalCallback = null;
+}
+
+function showLayerError(message) {
+    $('#layerNameError').text(message).show();
 }
 
 function getLayer() {
