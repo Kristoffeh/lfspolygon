@@ -7,6 +7,18 @@ activeCircle = null;
 window.layers = {};
 layersSize = 0;
 
+// Zoom
+var canvasZoom = 1;
+var canvasOffsetX = 0;
+var canvasOffsetY = 0;
+
+// Panning
+var isPanning = false;
+var panStartX = 0;
+var panStartY = 0;
+var panStartOffsetX = 0;
+var panStartOffsetY = 0;
+
 $(function () {
     canvasDiv = document.getElementById("canvas");
     window.gr = new jxGraphics(canvasDiv);
@@ -46,7 +58,119 @@ $(function () {
         }
     });
 
+    // Keyboard shortcuts for edit modes
+    $(document).on('keydown', function(e) {
+        // Don't trigger shortcuts when typing in input fields or textareas
+        var target = e.target;
+        if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+            return;
+        }
+
+        var key = e.key.toLowerCase();
+        var typeSelect = document.getElementById('type');
+        
+        if (key === 'a') {
+            // Add mode
+            typeSelect.value = 'add';
+            $(typeSelect).trigger('change');
+            e.preventDefault();
+        } else if (key === 's') {
+            // Move mode
+            typeSelect.value = 'move';
+            $(typeSelect).trigger('change');
+            e.preventDefault();
+        } else if (key === 'd') {
+            // Delete mode
+            typeSelect.value = 'delete';
+            $(typeSelect).trigger('change');
+            e.preventDefault();
+        } else if (key === 'e') {
+            // None mode (pan)
+            typeSelect.value = 'none';
+            $(typeSelect).trigger('change');
+            e.preventDefault();
+        }
+    });
+
+    // Canvas zoom with scroll (Photoshop-style: zooms towards mouse cursor)
+    $(document).on('wheel', '#canvas', function(e) {
+        // Always prevent default scrolling on canvas
+        e.preventDefault();
+        e.stopPropagation();
+        
+        var delta = e.originalEvent.deltaY;
+        var zoomFactor = delta > 0 ? 0.9 : 1.1;
+        var newZoom = Math.max(0.1, Math.min(5, canvasZoom * zoomFactor));
+        
+        // Get mouse position in screen/viewport coordinates
+        var mouseX = e.originalEvent.clientX;
+        var mouseY = e.originalEvent.clientY;
+        
+        // Get the canvas element's base position (before transform)
+        // We need to account for the canvas's left offset (320px for sidebar)
+        var canvasBaseLeft = 320; // From CSS: left: 320px
+        var canvasBaseTop = 0;
+        
+        // Calculate mouse position relative to canvas base position
+        var mouseRelativeX = mouseX - canvasBaseLeft;
+        var mouseRelativeY = mouseY - canvasBaseTop;
+        
+        // Calculate the point in the original (untransformed) canvas content
+        // that is currently under the mouse cursor
+        // Formula: contentPoint = (screenPoint - offset) / zoom
+        var contentX = (mouseRelativeX - canvasOffsetX) / canvasZoom;
+        var contentY = (mouseRelativeY - canvasOffsetY) / canvasZoom;
+        
+        // Update zoom level
+        canvasZoom = newZoom;
+        
+        // Calculate new offset to keep the same content point under the mouse
+        // Formula: offset = screenPoint - (contentPoint * zoom)
+        canvasOffsetX = mouseRelativeX - (contentX * canvasZoom);
+        canvasOffsetY = mouseRelativeY - (contentY * canvasZoom);
+        
+        // Apply transform
+        canvasDiv.style.transform = 'translate(' + canvasOffsetX + 'px, ' + canvasOffsetY + 'px) scale(' + canvasZoom + ')';
+        canvasDiv.style.transformOrigin = '0 0';
+    });
+
+    // Update cursor based on edit mode
+    $(document).on('mouseenter', '#canvas', function() {
+        if (getEditType() == 'none') {
+            canvasDiv.style.cursor = 'grab';
+        } else {
+            canvasDiv.style.cursor = 'default';
+        }
+    });
+
+    $(document).on('mousedown', '#canvas', function (e) {
+        // Handle panning when in "none" mode
+        if (getEditType() == 'none' && e.which == 1) { // Left mouse button
+            isPanning = true;
+            panStartX = e.pageX;
+            panStartY = e.pageY;
+            panStartOffsetX = canvasOffsetX;
+            panStartOffsetY = canvasOffsetY;
+            canvasDiv.style.cursor = 'grabbing';
+            e.preventDefault();
+            return false;
+        }
+    });
+
     $(document).on('mousemove', '#canvas', function (e) {
+        // Handle panning
+        if (isPanning) {
+            var deltaX = e.pageX - panStartX;
+            var deltaY = e.pageY - panStartY;
+            canvasOffsetX = panStartOffsetX + deltaX;
+            canvasOffsetY = panStartOffsetY + deltaY;
+            
+            // Apply transform
+            canvasDiv.style.transform = 'translate(' + canvasOffsetX + 'px, ' + canvasOffsetY + 'px) scale(' + canvasZoom + ')';
+            canvasDiv.style.transformOrigin = '0 0';
+            return;
+        }
+
         getMouseXY(e);
 
         if (drag) {
@@ -58,7 +182,13 @@ $(function () {
         }
     });
 
-    $(document).on('mouseup', '#canvas', function () {
+    $(document).on('mouseup', '#canvas', function (e) {
+        // Stop panning
+        if (isPanning) {
+            isPanning = false;
+            canvasDiv.style.cursor = 'default';
+            return;
+        }
 
         if (getEditType() == 'add') {
             createCirlce(true);
@@ -146,6 +276,55 @@ $(function () {
 
         layers[layer].speedLimit = this.value;
     });
+
+    // Update cursor and indicators when edit mode changes
+    function updateEditModeIndicators() {
+        var mode = getEditType();
+        var modeNames = {
+            'add': 'Add',
+            'move': 'Move',
+            'delete': 'Delete',
+            'none': 'Pan'
+        };
+        
+        // Update sidebar indicator
+        var indicator = $('#editModeIndicator');
+        indicator.text(modeNames[mode] || mode);
+        indicator.removeClass('mode-add mode-move mode-delete mode-none');
+        indicator.addClass('mode-' + mode);
+        
+        // Update top-right badge
+        var badge = $('#editModeBadge');
+        badge.text(modeNames[mode] || mode);
+        badge.removeClass('mode-add mode-move mode-delete mode-none');
+        badge.addClass('mode-' + mode);
+        
+        // Update cursor
+        if (mode == 'none') {
+            canvasDiv.style.cursor = 'grab';
+        } else {
+            canvasDiv.style.cursor = 'default';
+        }
+    }
+    
+    $(document).on('change', '#type', function() {
+        updateEditModeIndicators();
+    });
+    
+    // Initialize indicators on page load
+    updateEditModeIndicators();
+
+    // Stop panning if mouse is released outside canvas
+    $(document).on('mouseup', function() {
+        if (isPanning) {
+            isPanning = false;
+            if (getEditType() == 'none') {
+                canvasDiv.style.cursor = 'grab';
+            } else {
+                canvasDiv.style.cursor = 'default';
+            }
+        }
+    });
 })
 //Get canvas center point
 function getCanvasCenter() {
@@ -173,8 +352,13 @@ function getMouseXY(e) {
     var scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
     var scrollTop = window.pageYOffset || document.documentElement.scrollTop;
     
-    mouseX = pageX - canvasRect.left - scrollLeft + canvasDiv.scrollLeft;
-    mouseY = pageY - canvasRect.top - scrollTop + canvasDiv.scrollTop;
+    // Account for zoom and transform
+    var rawX = pageX - canvasRect.left - scrollLeft + canvasDiv.scrollLeft;
+    var rawY = pageY - canvasRect.top - scrollTop + canvasDiv.scrollTop;
+    
+    // Convert to canvas coordinates accounting for zoom
+    mouseX = (rawX - canvasOffsetX) / canvasZoom;
+    mouseY = (rawY - canvasOffsetY) / canvasZoom;
 
     if (mouseX < 0) {
         mouseX = 0
@@ -184,10 +368,9 @@ function getMouseXY(e) {
     }
 
     var center = getCanvasCenter();
-    $('.mouse_helper').css({
-        left: (pageX + 15) + 'px',
-        top: (pageY + 15) + 'px'
-    }).text('X: ' + (mouseX - center.x) + ' Y: ' + (center.y - mouseY));
+    var coordX = (mouseX - center.x).toFixed(2);
+    var coordY = (center.y - mouseY).toFixed(2);
+    $('.mouse_helper').text('x: ' + coordX + ' y: ' + coordY);
 
     return true;
 }
@@ -236,6 +419,10 @@ function createCirlce(show) {
 
 //Mousedown event handler for circle
 function circleMouseDown(evt, obj) {
+    // Don't handle circle events if panning
+    if (getEditType() == 'none') {
+        return;
+    }
 
     if (getEditType() == 'move') {
         drag = true;

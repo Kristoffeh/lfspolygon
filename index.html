@@ -65,10 +65,15 @@
 
         <div class="control-section">
             <h3 class="section-title">Edit Mode</h3>
-            <select class="form-select" size="3" id="type">
+            <div class="edit-mode-indicator-wrapper">
+                <span class="edit-mode-indicator" id="editModeIndicator">Add</span>
+                <span class="edit-mode-shortcut">(A/S/D/E)</span>
+            </div>
+            <select class="form-select" size="4" id="type">
                 <option selected>add</option>
                 <option>move</option>
                 <option>delete</option>
+                <option>none</option>
             </select>
         </div>
 
@@ -205,6 +210,10 @@
 <noscript>
     <div><img src="https://mc.yandex.ru/watch/24504719" style="position:absolute; left:-9999px;" alt=""/></div>
 </noscript> <!-- /Yandex.Metrika counter -->
+
+<div class="mouse_helper"></div>
+<div class="edit-mode-badge" id="editModeBadge">Add</div>
+
 </body>
 
 </html>
