@@ -31,6 +31,12 @@ $(function () {
         if (event.target === deleteModal[0]) {
             closeDeleteConfirmModal();
         }
+        
+        // Alert modal
+        var alertModal = $('#alertModal');
+        if (event.target === alertModal[0]) {
+            closeAlertModal();
+        }
     });
     
     // Enter key support for layer name input
@@ -89,11 +95,22 @@ $(function () {
 
     var color_picker = document.getElementById("color-picker");
     var color_picker_wrapper = document.getElementById("color-picker-wrapper");
+    var color_display = document.getElementById("color-display");
+    
+    function updateColorDisplay() {
+        var color = color_picker.value;
+        color_picker_wrapper.style.backgroundColor = color;
+        if (color_display) {
+            color_display.textContent = color.toUpperCase();
+        }
+    }
+    
     color_picker.onchange = function () {
-        color_picker_wrapper.style.backgroundColor = color_picker.value;
+        updateColorDisplay();
         reDrawPolygon();
     };
-    color_picker_wrapper.style.backgroundColor = color_picker.value;
+    
+    updateColorDisplay();
 
 
     $(document).on('change', '#layer', function (e) {
@@ -349,8 +366,7 @@ function editLayer() {
     var layer = getLayer();
     
     if (typeof layer != 'string' || layer.length == 0) {
-        // Show error in a simple alert since modal isn't open yet
-        alert('Please select a layer to edit');
+        showAlert('Please select a layer to edit');
         return;
     }
 
@@ -370,8 +386,7 @@ function deleteLayer() {
     var layer = getLayer();
     
     if (typeof layer != 'string' || layer.length == 0) {
-        // Show error in a simple alert since modal isn't open yet
-        alert('Please select a layer to delete');
+        showAlert('Please select a layer to delete');
         return;
     }
 
@@ -478,6 +493,17 @@ function closeDeleteConfirmModal() {
 
 function showLayerError(message) {
     $('#layerNameError').text(message).show();
+}
+
+function showAlert(message, title) {
+    title = title || 'Information';
+    $('#alertModalTitle').text(title);
+    $('#alertModalMessage').text(message);
+    $('#alertModal').css('display', 'block');
+}
+
+function closeAlertModal() {
+    $('#alertModal').css('display', 'none');
 }
 
 function getLayer() {

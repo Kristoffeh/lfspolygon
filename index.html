@@ -20,62 +20,86 @@
 
 <div id="canvas" style="width:2560px;height:2560px;"></div>
 
-<div id="work">
-    <div class="control_block">
-        <input type="button" value="Clear Canvas" onclick="clearCanvas();">
-        <input type="button" value="Load" onclick="loadJson();">
-        <input type="button" value="Export" onclick="Export();">
+<div id="sidebar">
+    <div class="sidebar-header">
+        <h2>LFS Polygon Editor</h2>
     </div>
-</div>
-<div id="work2">
-    <div class="control_block">
-        <label>Track:</label><br>
-        <select onchange="track(this.value)">
-            <option>AS</option>
-            <option>AU</option>
-            <option>BL</option>
-            <option>FE</option>
-            <option>KY</option>
-            <option>SO</option>
-            <option>WE</option>
-            <option>RO</option>
-        </select>
-    </div>
+    
+    <div class="sidebar-content">
+        <div class="control-section">
+            <h3 class="section-title">Actions</h3>
+            <div class="button-group">
+                <button class="btn btn-primary" onclick="Export();">
+                    <span class="btn-icon">📤</span> Export
+                </button>
+                <button class="btn btn-secondary" onclick="loadJson();">
+                    <span class="btn-icon">📥</span> Load
+                </button>
+                <button class="btn btn-danger" onclick="clearCanvas();">
+                    <span class="btn-icon">🗑️</span> Clear Canvas
+                </button>
+            </div>
+        </div>
 
-    <div class="control_block">
-        <label>Color:</label><br>
-        <div id="color-picker-wrapper">
-            <input type="color" value="#ff0000" id="color-picker">
+        <div class="control-section">
+            <h3 class="section-title">Track</h3>
+            <select class="form-select" onchange="track(this.value)">
+                <option>AS</option>
+                <option>AU</option>
+                <option>BL</option>
+                <option>FE</option>
+                <option>KY</option>
+                <option>SO</option>
+                <option>WE</option>
+                <option>RO</option>
+            </select>
+        </div>
+
+        <div class="control-section">
+            <h3 class="section-title">Color</h3>
+            <div id="color-picker-wrapper" class="color-picker-wrapper">
+                <input type="color" value="#ff0000" id="color-picker">
+                <span class="color-display" id="color-display">#ff0000</span>
+            </div>
+        </div>
+
+        <div class="control-section">
+            <h3 class="section-title">Edit Mode</h3>
+            <select class="form-select" size="3" id="type">
+                <option selected>add</option>
+                <option>move</option>
+                <option>delete</option>
+            </select>
+        </div>
+
+        <div class="control-section">
+            <h3 class="section-title">Polygon Properties</h3>
+            <div class="form-group">
+                <label class="form-label">Name</label>
+                <input type="text" class="form-input" id="name" placeholder="Polygon Name">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Speed Limit</label>
+                <input type="text" class="form-input" id="speed" placeholder="Speed">
+            </div>
+        </div>
+
+        <div class="control-section">
+            <h3 class="section-title">Layers</h3>
+            <select class="form-select layer-select" size="8" id="layer"></select>
+            <div class="button-group vertical">
+                <button class="btn btn-success" onclick="addLayer()">
+                    <span class="btn-icon">➕</span> Add Layer
+                </button>
+                <button class="btn btn-warning" onclick="editLayer()">
+                    <span class="btn-icon">✏️</span> Edit Layer
+                </button>
+                <button class="btn btn-danger" onclick="deleteLayer()">
+                    <span class="btn-icon">🗑️</span> Delete Layer
+                </button>
+            </div>
         </div>
     </div>
-
-    <div class="control_block">
-        <label>Point&nbsp;edit type:</label><br>
-        <select size="3" id="type">
-            <option selected>add</option>
-            <option>move</option>
-            <option>delete</option>
-        </select>
-    </div>
-
-    <div class="control_block">
-        <label>Speed:</label><br>
-        <input id="speed" placeholder="">
-    </div>
-
-    <div class="control_block">
-        <label>Polygon Name:</label><br>
-        <input id="name" placeholder="Polygon Name">
-    </div>
-
-    <div class="control_block">
-        <label>Layers:</label><br>
-        <select size="10" id="layer"></select><br>
-        <button onclick="addLayer()">Add Layer</button><br>
-        <button onclick="editLayer()">Edit Layer</button><br>
-        <button onclick="deleteLayer()">Delete Layer</button>
-    </div>
-
 </div>
 
 <!-- Hidden textarea for Load function -->
@@ -129,6 +153,22 @@
         <div class="modal-footer">
             <button onclick="confirmDeleteLayer()" style="background-color: #d32f2f;">Delete</button>
             <button onclick="closeDeleteConfirmModal()">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<!-- Alert/Info Modal -->
+<div id="alertModal" class="modal">
+    <div class="modal-content modal-small">
+        <div class="modal-header">
+            <h2 id="alertModalTitle">Information</h2>
+            <span class="modal-close" onclick="closeAlertModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <p id="alertModalMessage" style="color: #e0e0e0; margin: 0;"></p>
+        </div>
+        <div class="modal-footer">
+            <button onclick="closeAlertModal()">OK</button>
         </div>
     </div>
 </div>
