@@ -61,6 +61,24 @@ $(function () {
         if (event.target === importModal[0]) {
             closeImportModal();
         }
+        
+        // Wipe layers modal
+        var wipeLayersModal = $('#wipeLayersModal');
+        if (event.target === wipeLayersModal[0]) {
+            closeWipeLayersModal();
+        }
+        
+        // Clear canvas modal
+        var clearCanvasModal = $('#clearCanvasModal');
+        if (event.target === clearCanvasModal[0]) {
+            closeClearCanvasModal();
+        }
+        
+        // Wipe layers modal
+        var wipeLayersModal = $('#wipeLayersModal');
+        if (event.target === wipeLayersModal[0]) {
+            closeWipeLayersModal();
+        }
     });
     
     // Enter key support for layer name input
@@ -749,6 +767,53 @@ function saveProperties() {
     }
 
     closePropertiesModal();
+}
+
+function confirmClearCanvas() {
+    $('#clearCanvasModal').css('display', 'block');
+}
+
+function closeClearCanvasModal() {
+    $('#clearCanvasModal').css('display', 'none');
+}
+
+function clearCanvasConfirm() {
+    clearCanvas();
+    closeClearCanvasModal();
+}
+
+function confirmWipeLayers() {
+    $('#wipeLayersModal').css('display', 'block');
+}
+
+function closeWipeLayersModal() {
+    $('#wipeLayersModal').css('display', 'none');
+}
+
+function confirmClearCanvas() {
+    $('#clearCanvasModal').css('display', 'block');
+}
+
+function closeClearCanvasModal() {
+    $('#clearCanvasModal').css('display', 'none');
+}
+
+function clearCanvasConfirm() {
+    clearCanvas();
+    closeClearCanvasModal();
+}
+
+function confirmWipeLayers() {
+    $('#wipeLayersModal').css('display', 'block');
+}
+
+function closeWipeLayersModal() {
+    $('#wipeLayersModal').css('display', 'none');
+}
+
+function wipeLayers() {
+    clearCanvas();
+    closeWipeLayersModal();
 }
 
 function clearCanvas() {

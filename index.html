@@ -35,10 +35,10 @@
                 <button class="btn btn-secondary" onclick="openImportModal();">
                     <span class="btn-icon">📥</span> Import
                 </button>
-                <button class="btn btn-danger" onclick="clearCanvas();">
+                <button class="btn btn-danger" onclick="confirmClearCanvas();">
                     <span class="btn-icon">🗑️</span> Clear Canvas
                 </button>
-                <button class="btn btn-danger" onclick="clearCanvas();">
+                <button class="btn btn-danger" onclick="confirmWipeLayers();">
                     <span class="btn-icon">🧹</span> Wipe Layers
                 </button>
             </div>
@@ -170,6 +170,40 @@
         <div class="modal-footer">
             <button onclick="confirmDeleteLayer()" style="background-color: #d32f2f;">Delete</button>
             <button onclick="closeDeleteConfirmModal()">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<!-- Clear Canvas Confirmation Modal -->
+<div id="clearCanvasModal" class="modal">
+    <div class="modal-content modal-small">
+        <div class="modal-header">
+            <h2>Clear Canvas</h2>
+            <span class="modal-close" onclick="closeClearCanvasModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <p style="color: #e0e0e0; margin: 0;">Are you sure you want to clear the canvas? This will remove all polygons, points, and layers from the canvas. This action cannot be undone.</p>
+        </div>
+        <div class="modal-footer">
+            <button onclick="clearCanvasConfirm()" style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); color: white;">Clear Canvas</button>
+            <button onclick="closeClearCanvasModal()">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<!-- Wipe Layers Confirmation Modal -->
+<div id="wipeLayersModal" class="modal">
+    <div class="modal-content modal-small">
+        <div class="modal-header">
+            <h2>Wipe Layers</h2>
+            <span class="modal-close" onclick="closeWipeLayersModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <p style="color: #e0e0e0; margin: 0;">Are you sure you want to wipe all layers? This will remove all polygons, points, and layers from the canvas. This action cannot be undone.</p>
+        </div>
+        <div class="modal-footer">
+            <button onclick="wipeLayers()" style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); color: white;">Wipe All Layers</button>
+            <button onclick="closeWipeLayersModal()">Cancel</button>
         </div>
     </div>
 </div>
