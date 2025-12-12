@@ -11,6 +11,26 @@ layersSize = 0;
 var canvasZoom = 1;
 var canvasOffsetX = 0;
 var canvasOffsetY = 0;
+var isLoadingFromStorage = false; // Flag to prevent saving during initial load
+
+// Function to apply canvas transform
+function applyCanvasTransform() {
+    if (!canvasDiv) {
+        console.warn('applyCanvasTransform: canvasDiv not available');
+        return;
+    }
+    
+    // Ensure valid values
+    if (isNaN(canvasZoom) || canvasZoom < 0.1) canvasZoom = 1;
+    if (isNaN(canvasOffsetX)) canvasOffsetX = 0;
+    if (isNaN(canvasOffsetY)) canvasOffsetY = 0;
+    
+    var transformStr = 'translate(' + canvasOffsetX + 'px, ' + canvasOffsetY + 'px) scale(' + canvasZoom + ')';
+    canvasDiv.style.transform = transformStr;
+    canvasDiv.style.transformOrigin = '0 0';
+    
+    console.log('Applied canvas transform:', { zoom: canvasZoom, offsetX: canvasOffsetX, offsetY: canvasOffsetY });
+}
 
 // Panning
 var isPanning = false;
@@ -19,10 +39,200 @@ var panStartY = 0;
 var panStartOffsetX = 0;
 var panStartOffsetY = 0;
 
+// LocalStorage keys
+var STORAGE_KEYS = {
+    LAYERS: 'lfs_polygon_layers',
+    CANVAS_STATE: 'lfs_polygon_canvas_state',
+    SELECTED_TRACK: 'lfs_polygon_selected_track'
+};
+
+// Save to localStorage
+function saveToLocalStorage() {
+    // Don't save canvas state during initial load to prevent overwriting with defaults
+    if (isLoadingFromStorage) {
+        return;
+    }
+    
+    try {
+        // Save layers data
+        var layersData = [];
+        var center = getCanvasCenter();
+        
+        for (var i in window.layers) {
+            if (window.layers.hasOwnProperty(i)) {
+                var layerData = {
+                    id: i,
+                    name: window.layers[i].name,
+                    speedLimit: window.layers[i].speedLimit,
+                    circles: []
+                };
+                
+                // Save circle positions
+                if (window.layers[i].circles) {
+                    for (var j in window.layers[i].circles) {
+                        var circle = window.layers[i].circles[j];
+                        if (circle && circle.center) {
+                            layerData.circles.push({
+                                x: circle.center.x,
+                                y: circle.center.y,
+                                relativeX: circle.center.x - center.x,
+                                relativeY: center.y - circle.center.y
+                            });
+                        }
+                    }
+                }
+                
+                layersData.push(layerData);
+            }
+        }
+        
+        localStorage.setItem(STORAGE_KEYS.LAYERS, JSON.stringify(layersData));
+        
+        // Save canvas state
+        var canvasState = {
+            zoom: canvasZoom,
+            offsetX: canvasOffsetX,
+            offsetY: canvasOffsetY
+        };
+        localStorage.setItem(STORAGE_KEYS.CANVAS_STATE, JSON.stringify(canvasState));
+        
+    } catch (e) {
+        console.error('Error saving to localStorage:', e);
+    }
+}
+
+// Load from localStorage
+function loadFromLocalStorage() {
+    isLoadingFromStorage = true; // Set flag to prevent saving during load
+    try {
+        // Store canvas state to reapply after track loads
+        var canvasStateStr = localStorage.getItem(STORAGE_KEYS.CANVAS_STATE);
+        if (canvasStateStr) {
+            try {
+                window.savedCanvasState = JSON.parse(canvasStateStr);
+                // Set the variables immediately so they're available everywhere
+                if (window.savedCanvasState) {
+                    canvasZoom = window.savedCanvasState.zoom || 1;
+                    canvasOffsetX = window.savedCanvasState.offsetX || 0;
+                    canvasOffsetY = window.savedCanvasState.offsetY || 0;
+                }
+            } catch (e) {
+                console.error('Error parsing canvas state:', e);
+                window.savedCanvasState = null;
+            }
+        }
+        
+        // Load selected track first (so canvas is properly sized)
+        var selectedTrack = localStorage.getItem(STORAGE_KEYS.SELECTED_TRACK);
+        if (selectedTrack) {
+            // Set the select value
+            var trackSelect = document.querySelector('select[onchange*="track"]');
+            if (trackSelect) {
+                trackSelect.value = selectedTrack;
+                // Pass skipSave=true to prevent overwriting localStorage during load
+                track(selectedTrack, true);
+            }
+        } else {
+            // If no track saved, apply canvas state immediately
+            if (window.savedCanvasState) {
+                canvasZoom = window.savedCanvasState.zoom || 1;
+                canvasOffsetX = window.savedCanvasState.offsetX || 0;
+                canvasOffsetY = window.savedCanvasState.offsetY || 0;
+                applyCanvasTransform();
+            }
+        }
+        
+        // Load layers (after track loads, canvas state will be reapplied in track's onload)
+        var layersDataStr = localStorage.getItem(STORAGE_KEYS.LAYERS);
+        if (layersDataStr) {
+            var layersData = JSON.parse(layersDataStr);
+            
+            // Clear without saving to localStorage (we're loading)
+            for (var i in window.layers) {
+                if (window.layers.hasOwnProperty(i)) {
+                    if (window.layers[i].circles) {
+                        for (var j in window.layers[i].circles) {
+                            try {
+                                window.layers[i].circles[j].remove();
+                            } catch (e) {}
+                        }
+                    }
+                    if (window.layers[i].polygon) {
+                        try {
+                            window.layers[i].polygon.remove();
+                        } catch (e) {}
+                    }
+                }
+            }
+            window.layers = {};
+            layers = {};
+            $('#layer').html('');
+            layersSize = 0;
+            
+            for (var i = 0; i < layersData.length; i++) {
+                var layerData = layersData[i];
+                
+                // Create layer
+                createLayerWithName(layerData.name);
+                var layerId = getLayer();
+                
+                if (layerId) {
+                    window.layers[layerId].speedLimit = layerData.speedLimit || 0;
+                    
+                    // Restore circles
+                    var center = getCanvasCenter();
+                    for (var j = 0; j < layerData.circles.length; j++) {
+                        var circleData = layerData.circles[j];
+                        // Use absolute coordinates if available, otherwise use relative
+                        if (circleData.x !== undefined && circleData.y !== undefined) {
+                            mouseX = circleData.x;
+                            mouseY = circleData.y;
+                        } else {
+                            mouseX = center.x + circleData.relativeX;
+                            mouseY = center.y - circleData.relativeY;
+                        }
+                        createCirlce(true);
+                    }
+                    reDrawPolygon();
+                }
+            }
+        }
+        
+        // Reapply canvas state one more time after everything is loaded
+        // This ensures it's applied even if track loaded quickly
+        setTimeout(function() {
+            var finalCanvasStateStr = localStorage.getItem(STORAGE_KEYS.CANVAS_STATE);
+            console.log('Final canvas state from localStorage:', finalCanvasStateStr);
+            if (finalCanvasStateStr) {
+                try {
+                    var finalCanvasState = JSON.parse(finalCanvasStateStr);
+                    console.log('Parsed final canvas state:', finalCanvasState);
+                    canvasZoom = finalCanvasState.zoom || 1;
+                    canvasOffsetX = finalCanvasState.offsetX || 0;
+                    canvasOffsetY = finalCanvasState.offsetY || 0;
+                    applyCanvasTransform();
+                } catch (e) {
+                    console.error('Error applying final canvas state:', e);
+                }
+            } else {
+                console.warn('No canvas state found in localStorage');
+            }
+            // Clear the loading flag after everything is loaded
+            isLoadingFromStorage = false;
+        }, 300);
+    } catch (e) {
+        console.error('Error loading from localStorage:', e);
+        isLoadingFromStorage = false; // Clear flag on error
+    }
+}
+
 $(function () {
     canvasDiv = document.getElementById("canvas");
     window.gr = new jxGraphics(canvasDiv);
     gr.getSVG().style.opacity = 0.5;
+    
+    // Load from localStorage on page load
+    loadFromLocalStorage();
 
     // Modal close handlers
     $(window).on('click', function(event) {
@@ -160,8 +370,15 @@ $(function () {
         canvasOffsetY = mouseRelativeY - (contentY * canvasZoom);
         
         // Apply transform
-        canvasDiv.style.transform = 'translate(' + canvasOffsetX + 'px, ' + canvasOffsetY + 'px) scale(' + canvasZoom + ')';
-        canvasDiv.style.transformOrigin = '0 0';
+        applyCanvasTransform();
+        
+        // Save canvas state
+        var canvasState = {
+            zoom: canvasZoom,
+            offsetX: canvasOffsetX,
+            offsetY: canvasOffsetY
+        };
+        localStorage.setItem(STORAGE_KEYS.CANVAS_STATE, JSON.stringify(canvasState));
     });
 
     // Update cursor based on edit mode
@@ -217,6 +434,14 @@ $(function () {
         if (isPanning) {
             isPanning = false;
             canvasDiv.style.cursor = 'default';
+            
+            // Save canvas state after panning
+            var canvasState = {
+                zoom: canvasZoom,
+                offsetX: canvasOffsetX,
+                offsetY: canvasOffsetY
+            };
+            localStorage.setItem(STORAGE_KEYS.CANVAS_STATE, JSON.stringify(canvasState));
             return;
         }
 
@@ -249,6 +474,7 @@ $(function () {
         drag = false;
         activeCircle = null;
         reDrawPolygon();
+        saveToLocalStorage();
     });
 
     //---------------------------------------------------
@@ -497,7 +723,12 @@ function reDrawPolygon() {
 }
 
 
-function track(track) {
+function track(track, skipSave) {
+    // Save selected track to localStorage (unless we're loading)
+    if (!skipSave) {
+        localStorage.setItem(STORAGE_KEYS.SELECTED_TRACK, track);
+    }
+    
     var img = new Image();
     img.onload = function() {
         canvasDiv.style.width = this.width + 'px';
@@ -511,6 +742,32 @@ function track(track) {
             svg.style.height = this.height + 'px';
             svg.setAttribute('width', this.width);
             svg.setAttribute('height', this.height);
+        }
+        
+        // Reapply canvas state after track loads (if loading from localStorage)
+        if (skipSave) {
+            // Use setTimeout to ensure this runs after all other operations
+            setTimeout(function() {
+                // Use the saved canvas state or get from localStorage
+                var stateToApply = window.savedCanvasState;
+                if (!stateToApply) {
+                    var canvasStateStr = localStorage.getItem(STORAGE_KEYS.CANVAS_STATE);
+                    if (canvasStateStr) {
+                        try {
+                            stateToApply = JSON.parse(canvasStateStr);
+                        } catch (e) {
+                            console.error('Error parsing canvas state:', e);
+                        }
+                    }
+                }
+                
+                if (stateToApply) {
+                    canvasZoom = stateToApply.zoom || 1;
+                    canvasOffsetX = stateToApply.offsetX || 0;
+                    canvasOffsetY = stateToApply.offsetY || 0;
+                    applyCanvasTransform();
+                }
+            }, 150);
         }
     };
     img.src = "tracks/" + track + ".jpg";
@@ -558,6 +815,7 @@ function createLayerWithName(name) {
     $('#layer').append(op);
     $('#layer').trigger('change');
     
+    saveToLocalStorage();
     return layersSize;
 }
 
@@ -637,6 +895,7 @@ function confirmDeleteLayer() {
     }
     
     closeDeleteConfirmModal();
+    saveToLocalStorage();
 }
 
 function confirmLayerName() {
@@ -674,6 +933,7 @@ function confirmLayerName() {
             $('#name').val(name);
         }
         
+        saveToLocalStorage();
         closeLayerNameModal();
     }
 }
@@ -766,6 +1026,7 @@ function saveProperties() {
         }
     }
 
+    saveToLocalStorage();
     closePropertiesModal();
 }
 
@@ -849,6 +1110,10 @@ function clearCanvas() {
     // Clear the layer dropdown
     $('#layer').html('');
     layersSize = 0;
+    
+    // Clear localStorage
+    localStorage.removeItem(STORAGE_KEYS.LAYERS);
+    saveToLocalStorage();
 }
 
 function Export() {
