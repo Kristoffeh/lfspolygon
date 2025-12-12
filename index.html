@@ -56,14 +56,6 @@
         </div>
 
         <div class="control-section">
-            <h3 class="section-title">Color</h3>
-            <div id="color-picker-wrapper" class="color-picker-wrapper">
-                <input type="color" value="#ff0000" id="color-picker">
-                <span class="color-display" id="color-display">#ff0000</span>
-            </div>
-        </div>
-
-        <div class="control-section">
             <h3 class="section-title">Edit Mode</h3>
             <div class="edit-mode-indicator-wrapper">
                 <span class="edit-mode-indicator" id="editModeIndicator">Add</span>
@@ -78,14 +70,10 @@
         </div>
 
         <div class="control-section">
-            <h3 class="section-title">Polygon Properties</h3>
-            <div class="form-group">
-                <label class="form-label">Name</label>
-                <input type="text" class="form-input" id="name" placeholder="Polygon Name">
-            </div>
-            <div class="form-group">
-                <label class="form-label">Speed Limit</label>
-                <input type="text" class="form-input" id="speed" placeholder="Speed">
+            <h3 class="section-title">Color</h3>
+            <div id="color-picker-wrapper" class="color-picker-wrapper">
+                <input type="color" value="#ff0000" id="color-picker">
+                <span class="color-display" id="color-display">#ff0000</span>
             </div>
         </div>
 
@@ -98,6 +86,9 @@
                 </button>
                 <button class="btn btn-warning" onclick="editLayer()">
                     <span class="btn-icon">✏️</span> Edit Layer
+                </button>
+                <button class="btn btn-primary" onclick="openPropertiesModal()">
+                    <span class="btn-icon">⚙️</span> Properties
                 </button>
                 <button class="btn btn-danger" onclick="deleteLayer()">
                     <span class="btn-icon">🗑️</span> Delete Layer
@@ -174,6 +165,31 @@
         </div>
         <div class="modal-footer">
             <button onclick="closeAlertModal()">OK</button>
+        </div>
+    </div>
+</div>
+
+<!-- Properties Modal -->
+<div id="propertiesModal" class="modal">
+    <div class="modal-content modal-small">
+        <div class="modal-header">
+            <h2>Layer Properties</h2>
+            <span class="modal-close" onclick="closePropertiesModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label class="form-label">Name</label>
+                <input type="text" class="form-input" id="propertiesName" placeholder="Layer Name">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Speed Limit</label>
+                <input type="text" class="form-input" id="propertiesSpeed" placeholder="Speed Limit">
+            </div>
+            <div id="propertiesError" style="color: #ff6b6b; margin-top: 10px; display: none;"></div>
+        </div>
+        <div class="modal-footer">
+            <button onclick="saveProperties()">Save</button>
+            <button onclick="closePropertiesModal()">Cancel</button>
         </div>
     </div>
 </div>

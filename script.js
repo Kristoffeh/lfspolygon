@@ -49,6 +49,12 @@ $(function () {
         if (event.target === alertModal[0]) {
             closeAlertModal();
         }
+        
+        // Properties modal
+        var propertiesModal = $('#propertiesModal');
+        if (event.target === propertiesModal[0]) {
+            closePropertiesModal();
+        }
     });
     
     // Enter key support for layer name input
@@ -247,8 +253,6 @@ $(function () {
         var elem = this;
         for (i in layers) {
             if (layers.hasOwnProperty(i)) {
-                $('#name').val(layers[i].name);
-                $('#speed').val(layers[i].speedLimit);
                 for (j in layers[i].circles) {
                     if (i == elem.value)
                         layers[i].circles[j].show();
@@ -257,24 +261,6 @@ $(function () {
                 }
             }
         }
-    });
-
-    $(document).on('change', '#name', function (e) {
-        var layer = getLayer();
-
-        if (typeof layer != 'string' || layer.length == 0)
-            return;
-
-        layers[layer].name = this.value;
-    });
-
-    $(document).on('change', '#speed', function (e) {
-        var layer = getLayer();
-
-        if (typeof layer != 'string' || layer.length == 0)
-            return;
-
-        layers[layer].speedLimit = this.value;
     });
 
     // Update cursor and indicators when edit mode changes
@@ -335,30 +321,32 @@ function getCanvasCenter() {
 
 //Get mouse position
 function getMouseXY(e) {
-    var pageX, pageY;
-
+    // Get mouse position in viewport coordinates (same as zoom function)
+    var mouseScreenX, mouseScreenY;
+    
     if (document.all) //For IE
     {
-        pageX = event.clientX + document.body.parentElement.scrollLeft;
-        pageY = event.clientY + document.body.parentElement.scrollTop;
+        mouseScreenX = event.clientX;
+        mouseScreenY = event.clientY;
     }
     else {
-        pageX = e.pageX;
-        pageY = e.pageY;
+        mouseScreenX = e.clientX || e.originalEvent.clientX;
+        mouseScreenY = e.clientY || e.originalEvent.clientY;
     }
 
-    // Calculate position relative to canvas
-    var canvasRect = canvasDiv.getBoundingClientRect();
-    var scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
-    var scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+    // Get the canvas element's base position (before transform)
+    // Same calculation as in zoom function
+    var canvasBaseLeft = 320; // From CSS: left: 320px
+    var canvasBaseTop = 0;
     
-    // Account for zoom and transform
-    var rawX = pageX - canvasRect.left - scrollLeft + canvasDiv.scrollLeft;
-    var rawY = pageY - canvasRect.top - scrollTop + canvasDiv.scrollTop;
+    // Calculate mouse position relative to canvas base position
+    var mouseRelativeX = mouseScreenX - canvasBaseLeft;
+    var mouseRelativeY = mouseScreenY - canvasBaseTop;
     
-    // Convert to canvas coordinates accounting for zoom
-    mouseX = (rawX - canvasOffsetX) / canvasZoom;
-    mouseY = (rawY - canvasOffsetY) / canvasZoom;
+    // Convert to canvas content coordinates (accounting for zoom and offset)
+    // Same formula as zoom function: contentPoint = (screenPoint - offset) / zoom
+    mouseX = (mouseRelativeX - canvasOffsetX) / canvasZoom;
+    mouseY = (mouseRelativeY - canvasOffsetY) / canvasZoom;
 
     if (mouseX < 0) {
         mouseX = 0
@@ -697,6 +685,66 @@ function getLayer() {
     return $('#layer').val();
 }
 
+function openPropertiesModal() {
+    var layer = getLayer();
+    
+    if (typeof layer != 'string' || layer.length == 0) {
+        showAlert('Please select a layer to edit properties');
+        return;
+    }
+
+    // Load current properties
+    $('#propertiesName').val(layers[layer].name || '');
+    $('#propertiesSpeed').val(layers[layer].speedLimit || '');
+    $('#propertiesError').hide();
+    
+    // Store current layer for saving
+    window.currentPropertiesLayer = layer;
+    
+    $('#propertiesModal').css('display', 'block');
+    $('#propertiesName').focus();
+}
+
+function closePropertiesModal() {
+    $('#propertiesModal').css('display', 'none');
+    $('#propertiesName').val('');
+    $('#propertiesSpeed').val('');
+    $('#propertiesError').hide();
+    window.currentPropertiesLayer = null;
+}
+
+function saveProperties() {
+    var layer = window.currentPropertiesLayer;
+    
+    if (!layer || typeof layer != 'string' || layer.length == 0) {
+        $('#propertiesError').text('No layer selected').show();
+        return;
+    }
+
+    var name = $('#propertiesName').val().trim();
+    var speed = $('#propertiesSpeed').val().trim();
+
+    if (name.length <= 0) {
+        $('#propertiesError').text('Layer name cannot be empty').show();
+        return;
+    }
+
+    // Update layer properties
+    layers[layer].name = name;
+    layers[layer].speedLimit = speed;
+
+    // Update the option text in the select dropdown
+    var select = document.getElementById('layer');
+    for (var i = 0; i < select.options.length; i++) {
+        if (select.options[i].value == layer) {
+            select.options[i].innerHTML = name;
+            break;
+        }
+    }
+
+    closePropertiesModal();
+}
+
 function clearCanvas() {
     for (i in layers) {
         if (layers.hasOwnProperty(i)) {
@@ -722,7 +770,7 @@ function Export() {
         if (layers.hasOwnProperty(i)) {
             var row = {};
             row.name = layers[i].name;
-            row.speedLimit = layers[i].speedLimit;
+            row.speedLimit = parseInt(layers[i].speedLimit) || 0;
             row.X = [];
             row.Y = [];
             for (j in layers[i].circles) {
