@@ -643,6 +643,12 @@ function createCirlce(show) {
 
     var cir = new jxCircle(new jxPoint(mouseX, mouseY), 5, getPen(), getBrush());
     cir.id = layer + '_' + layers[layer].circles.length;
+    
+    // Store original properties for hover effect
+    cir.originalRadius = 5;
+    cir.originalBrush = getBrush();
+    cir.originalPen = getPen();
+    cir.hoverGlow = null; // Will hold the glow circle element
 
     if (show)
         cir.draw(gr);
@@ -678,21 +684,76 @@ function circleMouseUp(evt, obj) {
 }
 
 function circleMouseOver(evt, obj) {
+    // Don't show hover effect if panning
+    if (getEditType() == 'none') {
+        return;
+    }
 
     document.body.style.cursor = "pointer";
 
-    obj.brush = new jxBrush(new jxColor("red"));
-    obj.draw(gr);
+    // Store original radius if not already stored
+    if (!obj.originalRadius) {
+        obj.originalRadius = obj.radius;
+    }
 
+    // Increase radius for hover effect (scale up by 40% - more subtle)
+    obj.radius = obj.originalRadius * 1.4;
+    
+    // Create a bright highlight color (bright blue/cyan)
+    var hoverColor = new jxColor("#4a9eff");
+    
+    // Create a thicker, brighter pen for outline (white with 2px width)
+    obj.pen = new jxPen(new jxColor("#ffffff"), '2px');
+    obj.brush = new jxBrush(hoverColor);
+    
+    // Draw the circle with new properties
+    obj.draw(gr);
+    
+    // Add glow effect by finding the SVG circle element and adding a class
+    setTimeout(function() {
+        var svg = gr.getSVG();
+        if (svg) {
+            var circles = svg.querySelectorAll('circle');
+            // Find the circle that matches our object's position
+            var center = gr.logicalToPhysicalPoint(obj.center);
+            for (var i = 0; i < circles.length; i++) {
+                var circle = circles[i];
+                var cx = parseFloat(circle.getAttribute('cx'));
+                var cy = parseFloat(circle.getAttribute('cy'));
+                // Check if this circle is at our object's position (with small tolerance)
+                if (Math.abs(cx - center.x) < 1 && Math.abs(cy - center.y) < 1) {
+                    circle.classList.add('hover-glow');
+                    break;
+                }
+            }
+        }
+    }, 10);
 }
 
 function circleMouseOut(evt, obj) {
-
     document.body.style.cursor = "inherit";
 
+    // Restore original radius
+    if (obj.originalRadius) {
+        obj.radius = obj.originalRadius;
+    }
+    
+    // Restore to current layer color (not original, since colors can change)
     obj.brush = new jxBrush(getColor());
+    obj.pen = getPen();
+    
+    // Remove glow effect class
+    setTimeout(function() {
+        var svg = gr.getSVG();
+        if (svg) {
+            var circles = svg.querySelectorAll('circle.hover-glow');
+            for (var i = 0; i < circles.length; i++) {
+                circles[i].classList.remove('hover-glow');
+            }
+        }
+    }, 10);
+    
     obj.draw(gr);
-
 }
 
 function reDrawPolygon() {
