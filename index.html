@@ -76,7 +76,25 @@
 
 </div>
 
-<textarea class="output" id="txt" rows="5" cols="20" style="position: fixed; bottom: 0; left: 0"></textarea>
+<!-- Hidden textarea for Load function -->
+<textarea id="txt" style="display: none;"></textarea>
+
+<!-- Export Modal -->
+<div id="exportModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Exported Data</h2>
+            <span class="modal-close">&times;</span>
+        </div>
+        <div class="modal-body">
+            <textarea id="exportData" rows="15" cols="50"></textarea>
+        </div>
+        <div class="modal-footer">
+            <button onclick="copyExportData()">Copy to Clipboard</button>
+            <button onclick="closeExportModal()">Close</button>
+        </div>
+    </div>
+</div>
 
 <div class="mouse_helper"></div>
 

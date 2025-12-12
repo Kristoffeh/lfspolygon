@@ -12,6 +12,18 @@ $(function () {
     window.gr = new jxGraphics(canvasDiv);
     gr.getSVG().style.opacity = 0.5;
 
+    // Modal close handlers
+    $('.modal-close').on('click', function() {
+        closeExportModal();
+    });
+
+    $(window).on('click', function(event) {
+        var modal = $('#exportModal');
+        if (event.target === modal[0]) {
+            closeExportModal();
+        }
+    });
+
     $(document).on('mousemove', '#canvas', function (e) {
         getMouseXY(e);
 
@@ -343,7 +355,22 @@ function Export() {
         }
     }
 
-    $('#txt').val(JSON.stringify(data, null, 4));
+    var jsonData = JSON.stringify(data, null, 4);
+    $('#txt').val(jsonData);
+    $('#exportData').val(jsonData);
+    $('#exportModal').css('display', 'block');
+}
+
+function closeExportModal() {
+    $('#exportModal').css('display', 'none');
+}
+
+function copyExportData() {
+    var copyText = document.getElementById("exportData");
+    copyText.select();
+    copyText.setSelectionRange(0, 99999); // For mobile devices
+    document.execCommand("copy");
+    alert("Copied to clipboard!");
 }
 
 function getEditType() {
