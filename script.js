@@ -240,7 +240,13 @@ function reDrawPolygon() {
 
 
 function track(track) {
-    canvasDiv.style.backgroundImage = "url(https://img.lfs.net/remote/maps/" + track + ".jpg)";
+    var img = new Image();
+    img.onload = function() {
+        canvasDiv.style.width = this.width + 'px';
+        canvasDiv.style.height = this.height + 'px';
+        canvasDiv.style.backgroundImage = "url(tracks/" + track + ".jpg)";
+    };
+    img.src = "tracks/" + track + ".jpg";
     return false;
 }
 
