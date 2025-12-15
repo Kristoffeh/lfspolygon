@@ -372,6 +372,9 @@ $(function () {
         // Apply transform
         applyCanvasTransform();
         
+        // Update all circle radii to match new zoom level
+        updateAllCircleRadii();
+        
         // Save canvas state
         var canvasState = {
             zoom: canvasZoom,
@@ -422,7 +425,14 @@ $(function () {
 
         if (drag) {
             if (activeCircle) {
-                activeCircle.center = new jxPoint(mouseX, mouseY);
+                // Apply snapping to mouse position (exclude the circle being dragged)
+                var snapped = applySnapping(mouseX, mouseY, activeCircle.id);
+                
+                // Ensure radius is correct for current zoom
+                if (activeCircle.originalRadius !== undefined) {
+                    activeCircle.radius = getScaledRadius(activeCircle.originalRadius);
+                }
+                activeCircle.center = new jxPoint(snapped.x, snapped.y);
                 activeCircle.draw(gr);
                 reDrawPolygon();
             }
@@ -635,17 +645,94 @@ function getBrush() {
     return new jxBrush(getColor())
 }
 
+// Helper function to get scaled radius based on current zoom
+function getScaledRadius(baseRadius) {
+    // Scale radius inversely to zoom so anchor points stay visually the same size
+    return baseRadius / canvasZoom;
+}
+
+// Snap threshold in canvas coordinates (will be scaled with zoom for visual consistency)
+var SNAP_THRESHOLD = 5;
+
+// Find the nearest anchor point from all layers
+// excludeLayerId: layer to exclude (null to check all layers)
+// excludeCircleId: specific circle to exclude (null to check all circles)
+function findNearestAnchorPoint(x, y, excludeLayerId, excludeCircleId) {
+    var nearestPoint = null;
+    var minDistance = SNAP_THRESHOLD;
+    
+    // Check all layers
+    for (var layerId in window.layers) {
+        if (window.layers.hasOwnProperty(layerId)) {
+            // Check all circles in this layer
+            if (window.layers[layerId].circles) {
+                for (var j in window.layers[layerId].circles) {
+                    var circle = window.layers[layerId].circles[j];
+                    
+                    // Skip the excluded circle
+                    if (excludeCircleId && circle.id === excludeCircleId) {
+                        continue;
+                    }
+                    
+                    // If excluding a layer, skip all circles in that layer
+                    if (excludeLayerId && layerId === excludeLayerId) {
+                        continue;
+                    }
+                    
+                    if (circle && circle.center) {
+                        var dx = circle.center.x - x;
+                        var dy = circle.center.y - y;
+                        var distance = Math.sqrt(dx * dx + dy * dy);
+                        
+                        if (distance < minDistance) {
+                            minDistance = distance;
+                            nearestPoint = {
+                                x: circle.center.x,
+                                y: circle.center.y
+                            };
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    return nearestPoint;
+}
+
+// Apply snapping to mouse coordinates
+function applySnapping(x, y, excludeCircleId) {
+    var currentLayer = getLayer();
+    // When creating, exclude current layer. When dragging, exclude the circle being dragged
+    var excludeLayer = excludeCircleId ? null : currentLayer;
+    var snappedPoint = findNearestAnchorPoint(x, y, excludeLayer, excludeCircleId);
+    
+    if (snappedPoint) {
+        return snappedPoint;
+    }
+    
+    return { x: x, y: y };
+}
+
 function createCirlce(show) {
     var layer = getLayer();
 
     if (typeof layer != 'string' || layer.length == 0)
         return;
 
-    var cir = new jxCircle(new jxPoint(mouseX, mouseY), 5, getPen(), getBrush());
+    // Apply snapping to mouse position
+    var snapped = applySnapping(mouseX, mouseY);
+    var circleX = snapped.x;
+    var circleY = snapped.y;
+
+    // Use scaled radius so anchor points stay visually consistent when zoomed
+    var baseRadius = 7;
+    var scaledRadius = getScaledRadius(baseRadius);
+    var cir = new jxCircle(new jxPoint(circleX, circleY), scaledRadius, getPen(), getBrush());
     cir.id = layer + '_' + layers[layer].circles.length;
     
     // Store original properties for hover effect
-    cir.originalRadius = 5;
+    cir.originalRadius = baseRadius; // Store base radius, not scaled
     cir.originalBrush = getBrush();
     cir.originalPen = getPen();
     cir.hoverGlow = null; // Will hold the glow circle element
@@ -693,11 +780,12 @@ function circleMouseOver(evt, obj) {
 
     // Store original radius if not already stored
     if (!obj.originalRadius) {
-        obj.originalRadius = obj.radius;
+        obj.originalRadius = 7; // Default base radius
     }
 
     // Increase radius for hover effect (scale up by 40% - more subtle)
-    obj.radius = obj.originalRadius * 1.4;
+    // Scale the hover radius based on current zoom
+    obj.radius = getScaledRadius(obj.originalRadius * 1.4);
     
     // Create a bright highlight color (bright blue/cyan)
     var hoverColor = new jxColor("#4a9eff");
@@ -733,9 +821,11 @@ function circleMouseOver(evt, obj) {
 function circleMouseOut(evt, obj) {
     document.body.style.cursor = "inherit";
 
-    // Restore original radius
+    // Restore original radius (scaled for current zoom)
     if (obj.originalRadius) {
-        obj.radius = obj.originalRadius;
+        obj.radius = getScaledRadius(obj.originalRadius);
+    } else {
+        obj.radius = getScaledRadius(7); // Default base radius
     }
     
     // Restore to current layer color (not original, since colors can change)
@@ -756,6 +846,22 @@ function circleMouseOut(evt, obj) {
     obj.draw(gr);
 }
 
+// Function to update all circle radii based on current zoom
+function updateAllCircleRadii() {
+    for (var i in window.layers) {
+        if (window.layers.hasOwnProperty(i) && window.layers[i].circles) {
+            for (var j in window.layers[i].circles) {
+                var circle = window.layers[i].circles[j];
+                if (circle && circle.originalRadius !== undefined) {
+                    // Update radius based on current zoom
+                    circle.radius = getScaledRadius(circle.originalRadius);
+                    circle.draw(gr);
+                }
+            }
+        }
+    }
+}
+
 function reDrawPolygon() {
 
     var layer = getLayer();
@@ -773,6 +879,10 @@ function reDrawPolygon() {
     var points = [];
 
     for (var j in layers[layer].circles) {
+        // Update radius based on current zoom
+        if (layers[layer].circles[j].originalRadius !== undefined) {
+            layers[layer].circles[j].radius = getScaledRadius(layers[layer].circles[j].originalRadius);
+        }
         layers[layer].circles[j].brush = getBrush();
         points.push(layers[layer].circles[j].center)
     }
