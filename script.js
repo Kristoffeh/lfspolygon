@@ -201,13 +201,20 @@ function loadFromLocalStorage() {
                 }
             }
             
-            // Hide all circles first, then show only selected layer's anchors
+            // Hide all circles first
             for (var i in window.layers) {
                 if (window.layers.hasOwnProperty(i) && window.layers[i].circles) {
                     for (var j in window.layers[i].circles) {
                         window.layers[i].circles[j].hide();
                     }
                 }
+            }
+            
+            // Select the first layer if available
+            var layerSelect = $('#layer');
+            if (layerSelect.length > 0 && layerSelect[0].options.length > 0) {
+                layerSelect[0].selectedIndex = 0;
+                layerSelect.val(layerSelect[0].options[0].value);
             }
             
             // Apply layer visibility after loading (show only selected layer's anchors)
@@ -874,15 +881,31 @@ function circleMouseOut(evt, obj) {
 }
 
 // Function to update all circle radii based on current zoom
+// Only updates circles for the currently selected layer to preserve visibility
 function updateAllCircleRadii() {
+    var selectedLayer = getLayer();
+    
     for (var i in window.layers) {
         if (window.layers.hasOwnProperty(i) && window.layers[i].circles) {
-            for (var j in window.layers[i].circles) {
-                var circle = window.layers[i].circles[j];
-                if (circle && circle.originalRadius !== undefined) {
-                    // Update radius based on current zoom
-                    circle.radius = getScaledRadius(circle.originalRadius);
-                    circle.draw(gr);
+            // Only update circles for the selected layer
+            if (i === selectedLayer) {
+                for (var j in window.layers[i].circles) {
+                    var circle = window.layers[i].circles[j];
+                    if (circle && circle.originalRadius !== undefined) {
+                        // Update radius based on current zoom
+                        circle.radius = getScaledRadius(circle.originalRadius);
+                        circle.draw(gr);
+                    }
+                }
+            } else {
+                // For non-selected layers, update radius but don't draw (preserve hidden state)
+                for (var j in window.layers[i].circles) {
+                    var circle = window.layers[i].circles[j];
+                    if (circle && circle.originalRadius !== undefined) {
+                        // Update radius based on current zoom (for when layer becomes visible)
+                        circle.radius = getScaledRadius(circle.originalRadius);
+                        // Don't call draw() to preserve visibility state
+                    }
                 }
             }
         }
