@@ -179,7 +179,7 @@ function loadFromLocalStorage() {
                 if (layerId) {
                     window.layers[layerId].speedLimit = layerData.speedLimit || 0;
                     
-                    // Restore circles
+                    // Restore circles (but don't show them yet - they'll be shown when layer is selected)
                     var center = getCanvasCenter();
                     for (var j = 0; j < layerData.circles.length; j++) {
                         var circleData = layerData.circles[j];
@@ -191,11 +191,27 @@ function loadFromLocalStorage() {
                             mouseX = center.x + circleData.relativeX;
                             mouseY = center.y - circleData.relativeY;
                         }
-                        createCirlce(true);
+                        // Create circle but hide it initially
+                        var circle = createCirlce(true);
+                        if (circle) {
+                            circle.hide();
+                        }
                     }
                     reDrawPolygon();
                 }
             }
+            
+            // Hide all circles first, then show only selected layer's anchors
+            for (var i in window.layers) {
+                if (window.layers.hasOwnProperty(i) && window.layers[i].circles) {
+                    for (var j in window.layers[i].circles) {
+                        window.layers[i].circles[j].hide();
+                    }
+                }
+            }
+            
+            // Apply layer visibility after loading (show only selected layer's anchors)
+            $('#layer').trigger('change');
         }
         
         // Reapply canvas state one more time after everything is loaded
@@ -465,17 +481,17 @@ $(function () {
 
                 if (typeof layer == 'string' && layer.length > 0) {
                     var tmpCircles = [];
-                    for (var j in layers[layer].circles) {
-                        if (activeCircle.id != layers[layer].circles[j].id) {
-                            tmpCircles.push(layers[layer].circles[j]);
+                    for (var j in window.layers[layer].circles) {
+                        if (activeCircle.id != window.layers[layer].circles[j].id) {
+                            tmpCircles.push(window.layers[layer].circles[j]);
                         }
                         else {
-                            layers[layer].circles[j].remove();
+                            window.layers[layer].circles[j].remove();
                         }
                     }
-                    layers[layer].circles = tmpCircles;
+                    window.layers[layer].circles = tmpCircles;
                     if (tmpCircles.length < 3)
-                        layers[layer].polygon.hide()
+                        window.layers[layer].polygon.hide()
 
                 }
             }
@@ -511,13 +527,15 @@ $(function () {
 
     $(document).on('change', '#layer', function (e) {
         var elem = this;
-        for (i in layers) {
-            if (layers.hasOwnProperty(i)) {
-                for (j in layers[i].circles) {
-                    if (i == elem.value)
-                        layers[i].circles[j].show();
-                    else
-                        layers[i].circles[j].hide();
+        for (i in window.layers) {
+            if (window.layers.hasOwnProperty(i)) {
+                if (window.layers[i].circles) {
+                    for (j in window.layers[i].circles) {
+                        if (i == elem.value)
+                            window.layers[i].circles[j].show();
+                        else
+                            window.layers[i].circles[j].hide();
+                    }
                 }
             }
         }
@@ -729,7 +747,7 @@ function createCirlce(show) {
     var baseRadius = 7;
     var scaledRadius = getScaledRadius(baseRadius);
     var cir = new jxCircle(new jxPoint(circleX, circleY), scaledRadius, getPen(), getBrush());
-    cir.id = layer + '_' + layers[layer].circles.length;
+    cir.id = layer + '_' + window.layers[layer].circles.length;
     
     // Store original properties for hover effect
     cir.originalRadius = baseRadius; // Store base radius, not scaled
@@ -737,14 +755,23 @@ function createCirlce(show) {
     cir.originalPen = getPen();
     cir.hoverGlow = null; // Will hold the glow circle element
 
-    if (show)
-        cir.draw(gr);
+    if (show) {
+        // Check if this layer is currently selected before showing
+        var selectedLayer = getLayer();
+        if (layer === selectedLayer) {
+            cir.draw(gr);
+        } else {
+            // Draw but immediately hide if not selected layer
+            cir.draw(gr);
+            cir.hide();
+        }
+    }
 
     cir.addEventListener('mousedown', circleMouseDown);
     cir.addEventListener('mouseup', circleMouseUp);
     cir.addEventListener('mouseover', circleMouseOver);
     cir.addEventListener('mouseout', circleMouseOut);
-    layers[layer].circles.push(cir);
+    window.layers[layer].circles.push(cir);
     return cir;
 }
 
@@ -870,26 +897,26 @@ function reDrawPolygon() {
         return;
 
 
-    if (layers[layer].circles.length < 3)
+    if (window.layers[layer].circles.length < 3)
         return;
 
-    if (typeof layers[layer].polygon == 'undefined')
-        layers[layer].polygon = new jxPolygon([], getPen(), getBrush())
+    if (typeof window.layers[layer].polygon == 'undefined')
+        window.layers[layer].polygon = new jxPolygon([], getPen(), getBrush())
 
     var points = [];
 
-    for (var j in layers[layer].circles) {
+    for (var j in window.layers[layer].circles) {
         // Update radius based on current zoom
-        if (layers[layer].circles[j].originalRadius !== undefined) {
-            layers[layer].circles[j].radius = getScaledRadius(layers[layer].circles[j].originalRadius);
+        if (window.layers[layer].circles[j].originalRadius !== undefined) {
+            window.layers[layer].circles[j].radius = getScaledRadius(window.layers[layer].circles[j].originalRadius);
         }
-        layers[layer].circles[j].brush = getBrush();
-        points.push(layers[layer].circles[j].center)
+        window.layers[layer].circles[j].brush = getBrush();
+        points.push(window.layers[layer].circles[j].center)
     }
 
-    layers[layer].polygon.points = points;
-    layers[layer].polygon.brush = getBrush();
-    layers[layer].polygon.draw(gr);
+    window.layers[layer].polygon.points = points;
+    window.layers[layer].polygon.brush = getBrush();
+    window.layers[layer].polygon.draw(gr);
 
 }
 
@@ -978,10 +1005,10 @@ function createLayerWithName(name) {
     op.value = layersSize;
     op.innerHTML = name;
 
-    layers[layersSize] = {};
-    layers[layersSize].circles = [];
-    layers[layersSize].speedLimit = 0;
-    layers[layersSize].name = name;
+    window.layers[layersSize] = {};
+    window.layers[layersSize].circles = [];
+    window.layers[layersSize].speedLimit = 0;
+    window.layers[layersSize].name = name;
 
     // Assign a random color to the new zone
     var randomColor = getRandomColor();
@@ -1045,18 +1072,18 @@ function confirmDeleteLayer() {
     }
 
     // Remove all circles and polygon from this layer
-    if (layers[layer]) {
-        for (var j in layers[layer].circles) {
-            layers[layer].circles[j].remove();
+    if (window.layers[layer]) {
+        for (var j in window.layers[layer].circles) {
+            window.layers[layer].circles[j].remove();
         }
         
-        if (typeof layers[layer].polygon != 'undefined') {
-            layers[layer].polygon.remove();
+        if (typeof window.layers[layer].polygon != 'undefined') {
+            window.layers[layer].polygon.remove();
         }
     }
 
     // Remove from layers object
-    delete layers[layer];
+    delete window.layers[layer];
 
     // Remove from select dropdown
     var select = document.getElementById('layer');
@@ -1102,7 +1129,7 @@ function confirmLayerName() {
         }
         
         // Update layer name
-        layers[layer].name = name;
+        window.layers[layer].name = name;
         
         // Update the option text in the select
         var select = document.getElementById('layer');
@@ -1163,8 +1190,8 @@ function openPropertiesModal() {
     }
 
     // Load current properties
-    $('#propertiesName').val(layers[layer].name || '');
-    $('#propertiesSpeed').val(layers[layer].speedLimit || '');
+    $('#propertiesName').val(window.layers[layer].name || '');
+    $('#propertiesSpeed').val(window.layers[layer].speedLimit || '');
     $('#propertiesError').hide();
     
     // Store current layer for saving
@@ -1199,8 +1226,8 @@ function saveProperties() {
     }
 
     // Update layer properties
-    layers[layer].name = name;
-    layers[layer].speedLimit = speed;
+    window.layers[layer].name = name;
+    window.layers[layer].speedLimit = speed;
 
     // Update the option text in the select dropdown
     var select = document.getElementById('layer');
@@ -1305,16 +1332,16 @@ function Export() {
     var data = [];
     var center = getCanvasCenter();
 
-    for (i in layers) {
-        if (layers.hasOwnProperty(i)) {
+    for (i in window.layers) {
+        if (window.layers.hasOwnProperty(i)) {
             var row = {};
-            row.name = layers[i].name;
-            row.speedLimit = parseInt(layers[i].speedLimit) || 0;
+            row.name = window.layers[i].name;
+            row.speedLimit = parseInt(window.layers[i].speedLimit) || 0;
             row.X = [];
             row.Y = [];
-            for (j in layers[i].circles) {
-                row.X.push(layers[i].circles[j].center.x - center.x);
-                row.Y.push(center.y - layers[i].circles[j].center.y);
+            for (j in window.layers[i].circles) {
+                row.X.push(window.layers[i].circles[j].center.x - center.x);
+                row.Y.push(center.y - window.layers[i].circles[j].center.y);
             }
             data.push(row);
         }
@@ -1388,7 +1415,7 @@ function importJson() {
             document.getElementById("color-picker").value = getRandomColor();
 
             addLayer(street.name);
-            layers[getLayer()].speedLimit = street.speedLimit || 0;
+            window.layers[getLayer()].speedLimit = street.speedLimit || 0;
 
             for(j in street['X']) {
                 mouseX = center.x + street['X'][j];
