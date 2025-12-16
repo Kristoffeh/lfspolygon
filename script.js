@@ -954,7 +954,7 @@ function track(track, skipSave) {
     img.onload = function() {
         canvasDiv.style.width = this.width + 'px';
         canvasDiv.style.height = this.height + 'px';
-        canvasDiv.style.backgroundImage = "url(tracks/" + track + ".jpg)";
+        canvasDiv.style.backgroundImage = "url(tracks/" + track + ".png)";
         
         // Resize the SVG element to match the canvas
         var svg = gr.getSVG();
@@ -991,7 +991,7 @@ function track(track, skipSave) {
             }, 150);
         }
     };
-    img.src = "tracks/" + track + ".jpg";
+    img.src = "tracks/" + track + ".png";
     return false;
 }
 
